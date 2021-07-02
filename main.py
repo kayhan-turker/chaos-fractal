@@ -5,16 +5,12 @@ import arcade
 MAX_X = round(640 * 1)
 MAX_Y = round(640 * 1)
 
-testStartX = 0
-testStartY = 0
+testPosX = [[x for x in range(MAX_X)] for y in range(MAX_Y)]
+testPosY = [[y for x in range(MAX_X)] for y in range(MAX_Y)]
+testVelX = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
+testVelY = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
+testDone = [[False for x in range(MAX_X)] for y in range(MAX_Y)]
 testTime = 0
-timeOut = 0
-timeLimit = 500
-
-testPosX = testStartX
-testPosY = testStartY
-testVelX = 0
-testVelY = 0
 
 pNum = 3
 pRad = 128
@@ -27,7 +23,7 @@ pColor = [colorsys.hsv_to_rgb(i / pNum, 1.0, 255) for i in range(pNum + 1)]
 mapColor = [[(0, 0, 0) for x in range(MAX_X)] for y in range(MAX_Y)]
 mapTime = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
 maxTime = 0
-minTime = 10000
+minTime = 100000
 
 toDrawMap = False
 
@@ -51,7 +47,7 @@ class Canvas(arcade.Window):
         mainLoop()
 
     def on_key_press(self, key, modifiers):
-        global toDrawMap, toDraw
+        global toDrawMap
         if key == arcade.key.SPACE:
             toDrawMap = not toDrawMap
 
@@ -61,7 +57,11 @@ class Canvas(arcade.Window):
 
 
 def drawWorld(arc):
-    arc.draw_point(testPosX, testPosY, (255, 255, 255), 1)
+    for tx in range(MAX_X):
+        for ty in range(MAX_Y):
+            if not testDone[tx][ty]:
+                arc.draw_point(testPosX[tx][ty], testPosY[tx][ty], (255, 255, 255), 1)
+
     for p in range(pNum):
         arc.draw_circle_filled(pX[p], pY[p], pRad[p], pColor[p])
 
@@ -79,71 +79,49 @@ def drawMap(arc):
 
 
 def mainLoop():
-    global testPosX, testPosY, testVelX, testVelY, testTime, timeOut
+    global testPosX, testPosY, testVelX, testVelY, testTime
 
     for p in range(pNum):
-        disX = pX[p] - testPosX
-        disY = pY[p] - testPosY
-        dis = math.sqrt(disX * disX + disY * disY)
-        if dis == 0:
-            dis = 0.001
+        px = pX[p]
+        py = pY[p]
+        pr = pRad[p]
+        pc = pColor[p]
 
-        if dis < pRad[p]:
-            nextTest(pColor[p])
-            break
+        for tx in range(MAX_X):
+            for ty in range(MAX_Y):
+                if not testDone[tx][ty]:
+                    disX = px - testPosX[tx][ty]
+                    disY = py - testPosY[tx][ty]
+                    dis = math.sqrt(disX * disX + disY * disY)
+                    if dis == 0:
+                        dis = 0.0001
 
-        if dis > pRad[p]:
-            dis = math.sqrt(disX * disX + disY * disY)
-            force = pMag[p] / dis / dis / dis
-            testVelX += force * disX
-            testVelY += force * disY
+                    if dis < pr:
+                        endTest(tx, ty, pc)
+                        break
+                    else:
+                        force = pMag[p] / dis / dis / dis
+                        testVelX[tx][ty] += force * disX
+                        testVelY[tx][ty] += force * disY
 
-    testPosX += testVelX
-    testPosY += testVelY
+                    testPosX[tx][ty] += testVelX[tx][ty]
+                    testPosY[tx][ty] += testVelY[tx][ty]
 
     testTime += 1
-    if testPosX < 0 or testPosX > MAX_X or testPosY < 0 or testPosY > MAX_Y:
-        timeOut += 1
-    if timeOut > timeLimit:
-        nextTest((0, 0, 0), True)
 
 
-def getForce(disX, disY, mag):
-    dis = math.sqrt(disX * disX + disY * disY)
-    force = mag / dis / dis / dis
-    return force * disX, force * disY
-
-
-def nextTest(clr, out=False):
+def endTest(tx, ty, clr):
     global testPosX, testPosY, testVelX, testVelY
-    global testStartX, testStartY, testTime, timeOut, maxTime, minTime
+    global testTime, maxTime, minTime
 
-    print("done", testStartX, testStartY)
-
-    if out:
-        testTime -= timeOut
-    mapColor[testStartX][testStartY] = clr
-    mapTime[testStartX][testStartY] = testTime
-
-    testStartX += 2
-    if testStartX >= MAX_X:
-        testStartX = 0
-        testStartY += 2
-        if testStartY >= MAX_Y:
-            testStartX = 0
-            testStartY = 0
+    mapColor[tx][ty] = clr
+    mapTime[tx][ty] = testTime
+    testDone[tx][ty] = True
 
     if testTime > maxTime:
         maxTime = testTime
     if testTime < minTime:
         minTime = testTime
-    testTime = 0
-    timeOut = 0
-
-    testPosX = testStartX
-    testPosY = testStartY
-    testVelX = 0
-    testVelY = 0
 
 
 def main():
