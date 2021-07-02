@@ -4,24 +4,25 @@ import arcade
 
 MAX_X = round(640 * 1)
 MAX_Y = round(640 * 1)
+detail = 14
 
-testPosX = [[x for x in range(MAX_X)] for y in range(MAX_Y)]
-testPosY = [[y for x in range(MAX_X)] for y in range(MAX_Y)]
-testVelX = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
-testVelY = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
-testDone = [[False for x in range(MAX_X)] for y in range(MAX_Y)]
+testPosX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
+testPosY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
+testVelX = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
+testVelY = [[1 for y in range(MAX_Y)] for x in range(MAX_X)]
+testDone = [[False for y in range(MAX_Y)] for x in range(MAX_X)]
 testTime = 0
 
-pNum = 3
-pRad = 128
+pNum = 1
+pRad = 32
 pX = [MAX_X / 2 + pRad * math.cos(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
 pY = [MAX_Y / 2 + pRad * math.sin(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
 pMag = [1000 for i in range(pNum + 1)]
 pRad = [10 for i in range(pNum + 1)]
 pColor = [colorsys.hsv_to_rgb(i / pNum, 1.0, 255) for i in range(pNum + 1)]
 
-mapColor = [[(0, 0, 0) for x in range(MAX_X)] for y in range(MAX_Y)]
-mapTime = [[0 for x in range(MAX_X)] for y in range(MAX_Y)]
+mapColor = [[(0, 0, 0) for y in range(MAX_Y)] for x in range(MAX_X)]
+mapTime = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
 maxTime = 0
 minTime = 100000
 
@@ -60,7 +61,8 @@ def drawWorld(arc):
     for tx in range(MAX_X):
         for ty in range(MAX_Y):
             if not testDone[tx][ty]:
-                arc.draw_point(testPosX[tx][ty], testPosY[tx][ty], (255, 255, 255), 1)
+                if tx % detail == 0 and ty % detail == 0:
+                    arc.draw_point(testPosX[tx][ty], testPosY[tx][ty], (255, 255, 255), 1)
 
     for p in range(pNum):
         arc.draw_circle_filled(pX[p], pY[p], pRad[p], pColor[p])
@@ -81,31 +83,38 @@ def drawMap(arc):
 def mainLoop():
     global testPosX, testPosY, testVelX, testVelY, testTime
 
-    for p in range(pNum):
-        px = pX[p]
-        py = pY[p]
-        pr = pRad[p]
-        pc = pColor[p]
+    for tx in range(MAX_X):
+        for ty in range(MAX_Y):
+            if not testDone[tx][ty]:
+                tpx = testPosX[tx][ty]
+                tpy = testPosY[tx][ty]
+                tvx = 0
+                tvy = 0
 
-        for tx in range(MAX_X):
-            for ty in range(MAX_Y):
-                if not testDone[tx][ty]:
-                    disX = px - testPosX[tx][ty]
-                    disY = py - testPosY[tx][ty]
+                for p in range(pNum):
+                    disX = pX[p] - tpx
+                    disY = pY[p] - tpy
                     dis = math.sqrt(disX * disX + disY * disY)
                     if dis == 0:
                         dis = 0.0001
 
-                    if dis < pr:
-                        endTest(tx, ty, pc)
+                    if dis < pRad[p]:
+                        endTest(tx, ty, pColor[p])
                         break
                     else:
                         force = pMag[p] / dis / dis / dis
-                        testVelX[tx][ty] += force * disX
-                        testVelY[tx][ty] += force * disY
+                        tvx += force * disX
+                        tvy += force * disY
 
-                    testPosX[tx][ty] += testVelX[tx][ty]
-                    testPosY[tx][ty] += testVelY[tx][ty]
+                testVelX[tx][ty] += tvx
+                testVelY[tx][ty] += tvy
+                testPosX[tx][ty] += testVelX[tx][ty]
+                testPosY[tx][ty] += testVelY[tx][ty]
+
+                tpx = testPosX[tx][ty]
+                tpy = testPosY[tx][ty]
+                if tpx < -MAX_X or tpx > MAX_X * 2 or tpy < -MAX_Y or tpy > MAX_Y * 2:
+                    endTest(tx, ty, (0, 0, 0))
 
     testTime += 1
 
