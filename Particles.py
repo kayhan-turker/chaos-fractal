@@ -17,15 +17,14 @@ class Particles:
         self.vy = [[0 for y in range(max_y)] for x in range(max_x)]
         self.done = [[False for y in range(max_y)] for x in range(max_x)]
 
-    def draw(self, arc, detail):
+    def draw(self, arc):
         for tx in range(self.max_x):
             for ty in range(self.max_y):
                 if not self.done[tx][ty]:
-                    if tx % detail == 0 and ty % detail == 0:
+                    if tx % 10 == 0 and ty % 10 == 0:
                         arc.draw_point(self.px[tx][ty], self.py[tx][ty], (255, 255, 255), 1)
 
-    def accelerate(self, masses, bounce):
-        doneList = []
+    def accelerate(self, masses, fieldMap, bounce):
         max_x = self.max_x
         max_y = self.max_y
 
@@ -45,7 +44,7 @@ class Particles:
                             dis = 0.0001
 
                         if dis < masses.pRad[p]:
-                            doneList.append((tx, ty, masses.pColor[p], False))
+                            fieldMap.setMap(tx, ty, masses.pColor[p])
                             self.done[tx][ty] = True
                             break
                         else:
@@ -75,7 +74,7 @@ class Particles:
                             self.py[tx][ty] = 2 * max_y - tpy
                             self.vy[tx][ty] *= -1
                     elif tpx < -max_x or tpx > max_x * 2 or tpy < -max_y or tpy > max_y * 2:
-                        doneList.append((tx, ty, (0, 0, 0), True))
+                        fieldMap.setMap(tx, ty, (0, 0, 0))
                         self.done[tx][ty] = True
 
-        return doneList
+        fieldMap.testTime += 1
