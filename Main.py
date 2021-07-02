@@ -1,15 +1,12 @@
 import math
 import colorsys
 import arcade
+import Particles
 
 MAX_X = 640
 MAX_Y = 640
 
-testPosX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
-testPosY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
-testVelX = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
-testVelY = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
-testDone = [[False for y in range(MAX_Y)] for x in range(MAX_X)]
+particles = Particles(MAX_X, MAX_Y)
 testTime = 0
 
 pNum = 6
