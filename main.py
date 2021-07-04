@@ -16,8 +16,8 @@ pNum = 6
 pRad = 128
 pX = [MAX_X / 2 + pRad * math.cos(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
 pY = [MAX_Y / 2 + pRad * math.sin(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
-pMag = [2, -2, 2, -2, 2, -2]
-pRad = [2 for i in range(pNum + 1)]
+pMag = [16, -16, 16, -16, 16, -16]
+pRad = [4 for i in range(pNum + 1)]
 pColor = [colorsys.hsv_to_rgb(i / pNum, 1.0, 255) for i in range(pNum + 1)]
 
 mapColor = [[(0, 0, 0) for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -34,8 +34,8 @@ wallWrap = True
 circleWall = True
 wallRadius = min(MAX_X, MAX_Y) / 2
 
-drawParticles = 100
-detail = max(1, round(math.sqrt(numTesting / maxTesting * numTesting / drawParticles)))
+drawParticles = 256
+detail = 1
 
 toDrawMap = False
 
@@ -104,6 +104,14 @@ def drawMap(arc):
 def mainLoop():
     global testPosX, testPosY, testVelX, testVelY, testTime
 
+    accPart()
+    accMass()
+
+    if numTesting > 1:
+        testTime += 1
+
+
+def accPart():
     for tx in range(MAX_X):
         for ty in range(MAX_Y):
             if not testDone[tx][ty]:
@@ -153,9 +161,6 @@ def mainLoop():
 
                 testPosX[tx][ty], testPosY[tx][ty], testVelX[tx][ty], testVelY[tx][ty] = fpx, fpy, fvx, fvy
 
-    if numTesting > 1:
-        testTime += 1
-
 
 def endTest(tx, ty, clr):
     global testPosX, testPosY, testVelX, testVelY
@@ -176,10 +181,10 @@ def endTest(tx, ty, clr):
     numDone += 1
 
     if numTesting % 1000 == 0:
-        detail = max(1, round(math.sqrt(numTesting / maxTesting * numTesting / drawParticles)))
+        detail = max(1, round(1 / math.sqrt(drawParticles / numTesting)))
 
     if numTesting % 100 == 0:
-        print(detail, numTesting, numDone)
+        print (numTesting, numDone, detail)
 
 
 def main():
