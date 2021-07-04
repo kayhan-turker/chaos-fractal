@@ -2,7 +2,5 @@
 /*/
 
 !.gitignore
-!Main.py
-!Particles.py
-!Mass.py
+!main.py
 
