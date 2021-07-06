@@ -4,13 +4,13 @@ import arcade
 import numpy
 from PIL import Image
 
-MAX_X = 222
-MAX_Y = 222
+MAX_X = 512
+MAX_Y = 512
 
 defMass = 16
 defRad = 4
 numMass = 6
-ringRad = 55
+ringRad = 128
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
 testPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -38,6 +38,9 @@ minTime = 100000
 mapColor = [[(0, 0, 0) for y in range(MAX_Y)] for x in range(MAX_X)]
 mapTime = [[0.0 for y in range(MAX_Y)] for x in range(MAX_X)]
 
+mapArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
+mapImage = Image.fromarray(mapArray, 'RGB')
+
 testMax = MAX_X * MAX_Y
 testLeft = testMax
 testDone = 0
@@ -46,8 +49,6 @@ wallBounce = False
 wallWrap = True
 circleWall = True
 wallRadius = min(MAX_X, MAX_Y) / 2
-
-toDrawMap = False
 
 
 class Canvas(arcade.Window):
@@ -60,22 +61,16 @@ class Canvas(arcade.Window):
 
     def on_draw(self):
         arcade.start_render()
-        if toDrawMap:
-            drawMap(arcade)
-        else:
-            drawWorld(arcade)
+        drawWorld(arcade)
 
     def update(self, delta_time):
         mainLoop()
 
     def on_key_press(self, key, modifiers):
-        global toDrawMap
         if key == arcade.key.SPACE:
-            toDrawMap = not toDrawMap
-
-    def on_key_release(self, key, modifiers):
-        if key == arcade.key.SPACE:
-            pass
+            getMap()
+            mapImage.show()
+            mapImage.save('chaos-fractal-%i-%0.2f.png' % (numMass, testDone / (testDone + testLeft)))
 
 
 def checkDone():
@@ -100,16 +95,20 @@ def drawWorld(arc):
                     return
 
 
-def drawMap(arc):
+def getMap():
+    global mapArray, mapImage
+
+    mapArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
     for mapX in range(MAX_X):
         for mapY in range(MAX_Y):
-            if mapColor[mapX][mapY] != (0, 0, 0):
-                clr = mapColor[mapX][mapY]
-                time = mapTime[mapX][mapY]
-                factor = 1 - (time - minTime) / (maxTime - minTime) if maxTime != minTime else 1
+            clr = mapColor[mapX][mapY]
+            time = mapTime[mapX][mapY]
+            factor = 1 - (time - minTime) / (maxTime - minTime) if maxTime != minTime else 1
+            clr = (clr[0] * factor, clr[1] * factor, clr[2] * factor)
 
-                clr = (clr[0] * factor, clr[1] * factor, clr[2] * factor)
-                arc.draw_point(mapX, mapY, clr, 1)
+            mapArray[mapY, mapX] = [clr[0], clr[1], clr[2]]
+
+    mapImage = Image.fromarray(mapArray, 'RGB')
 
 
 def mainLoop():
@@ -245,7 +244,7 @@ def endTest(x, y, clr):
     testDone += 1
 
     if testLeft % 100 == 0:
-        print(testLeft, testDone)
+        print(testLeft, testDone, round(testDone / (testDone + testLeft) * 100) / 100)
 
 
 def main():
