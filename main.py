@@ -5,25 +5,27 @@ import arcade
 MAX_X = 512
 MAX_Y = 512
 
-testPosX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
-testPosY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
-testVelX = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
-testVelY = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
-testDone = [[False for y in range(MAX_Y)] for x in range(MAX_X)]
+partPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
+partPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
+partVX = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
+partVY = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
+partDone = [[False for y in range(MAX_Y)] for x in range(MAX_X)]
+
+numMass = 6
+massRad = 128
+massPX = [MAX_X / 2 + massRad * math.cos(i / numMass * 2 * math.pi) for i in range(numMass + 1)]
+massPY = [MAX_Y / 2 + massRad * math.sin(i / numMass * 2 * math.pi) for i in range(numMass + 1)]
+massVX = [0 for i in range(numMass + 1)]
+massVY = [0 for i in range(numMass + 1)]
+massMag = [16, -16, 16, -16, 16, -16]
+massRad = [4 for i in range(numMass + 1)]
+massClr = [colorsys.hsv_to_rgb(i / numMass, 1.0, 255) for i in range(numMass + 1)]
+
 testTime = 0
-
-pNum = 6
-pRad = 128
-pX = [MAX_X / 2 + pRad * math.cos(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
-pY = [MAX_Y / 2 + pRad * math.sin(i / pNum * 2 * math.pi) for i in range(pNum + 1)]
-pMag = [16, -16, 16, -16, 16, -16]
-pRad = [4 for i in range(pNum + 1)]
-pColor = [colorsys.hsv_to_rgb(i / pNum, 1.0, 255) for i in range(pNum + 1)]
-
-mapColor = [[(0, 0, 0) for y in range(MAX_Y)] for x in range(MAX_X)]
-mapTime = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
 maxTime = 0
 minTime = 100000
+mapColor = [[(0, 0, 0) for y in range(MAX_Y)] for x in range(MAX_X)]
+mapTime = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
 
 maxTesting = MAX_X * MAX_Y
 numTesting = maxTesting
@@ -71,8 +73,8 @@ class Canvas(arcade.Window):
 def checkDone():
     for tx in range(MAX_X):
         for ty in range(MAX_Y):
-            disX = testPosX[tx][ty] - MAX_X / 2
-            disY = testPosY[tx][ty] - MAX_Y / 2
+            disX = partPX[tx][ty] - MAX_X / 2
+            disY = partPY[tx][ty] - MAX_Y / 2
             dis = math.sqrt(disX * disX + disY * disY)
             if dis > wallRadius:
                 endTest(tx, ty, (0, 0, 0))
@@ -81,12 +83,12 @@ def checkDone():
 def drawWorld(arc):
     for tx in range(MAX_X):
         for ty in range(MAX_Y):
-            if not testDone[tx][ty]:
+            if not partDone[tx][ty]:
                 if tx % detail == 0 and ty % detail == 0:
-                    arc.draw_point(testPosX[tx][ty], testPosY[tx][ty], (255, 255, 255), 1)
+                    arc.draw_point(partPX[tx][ty], partPY[tx][ty], (255, 255, 255), 1)
 
-    for p in range(pNum):
-        arc.draw_circle_filled(pX[p], pY[p], pRad[p], pColor[p])
+    for p in range(numMass):
+        arc.draw_circle_filled(massPX[p], massPY[p], massRad[p], massClr[p])
 
 
 def drawMap(arc):
@@ -102,7 +104,7 @@ def drawMap(arc):
 
 
 def mainLoop():
-    global testPosX, testPosY, testVelX, testVelY, testTime
+    global partPX, partPY, partVX, partVY, testTime
 
     accPart()
     accMass()
@@ -114,22 +116,22 @@ def mainLoop():
 def accPart():
     for tx in range(MAX_X):
         for ty in range(MAX_Y):
-            if not testDone[tx][ty]:
-                spx, spy, svx, svy = testPosX[tx][ty], testPosY[tx][ty], testVelX[tx][ty], testVelY[tx][ty]
+            if not partDone[tx][ty]:
+                spx, spy, svx, svy = partPX[tx][ty], partPY[tx][ty], partVX[tx][ty], partVY[tx][ty]
                 fpx, fpy, fvx, fvy = spx, spy, svx, svy
 
-                for p in range(pNum):
-                    disX = pX[p] - spx
-                    disY = pY[p] - spy
+                for p in range(numMass):
+                    disX = massPX[p] - spx
+                    disY = massPY[p] - spy
                     dis = math.sqrt(disX * disX + disY * disY)
                     if dis == 0:
                         dis = 0.000001
 
-                    if dis < pRad[p]:
-                        endTest(tx, ty, pColor[p])
+                    if dis < massRad[p]:
+                        endTest(tx, ty, massClr[p])
                         break
                     else:
-                        force = pMag[p] / (dis * dis * dis)
+                        force = massMag[p] / (dis * dis * dis)
                         fvx += force * disX
                         fvy += force * disY
 
@@ -150,27 +152,97 @@ def accPart():
                         fpy = 2 * MAX_Y - fpy
                         fvy *= -1
                 elif wallWrap:
-                    disX = fpx - MAX_X / 2
-                    disY = fpy - MAX_Y / 2
-                    dis = math.sqrt(disX * disX + disY * disY)
-                    if dis > wallRadius:
-                        fpx += -disX / dis * wallRadius * 2
-                        fpy += -disY / dis * wallRadius * 2
+                    if circleWall:
+                        disX = fpx - MAX_X / 2
+                        disY = fpy - MAX_Y / 2
+                        dis = math.sqrt(disX * disX + disY * disY)
+                        if dis > wallRadius:
+                            fpx += -disX / dis * wallRadius * 2
+                            fpy += -disY / dis * wallRadius * 2
+                    else:
+                        if fpx < 0:
+                            fpx = MAX_X
+                        elif fpx > MAX_X:
+                            fpx = 0
+                        if fpy < 0:
+                            fpy = MAX_Y
+                        elif fpy > MAX_Y:
+                            fpy = 0
                 elif fpx < -MAX_X or fpx > MAX_X * 2 or fpy < -MAX_Y or fpy > MAX_Y * 2:
                     endTest(tx, ty, (0, 0, 0))
 
-                testPosX[tx][ty], testPosY[tx][ty], testVelX[tx][ty], testVelY[tx][ty] = fpx, fpy, fvx, fvy
+                partPX[tx][ty], partPY[tx][ty], partVX[tx][ty], partVY[tx][ty] = fpx, fpy, fvx, fvy
+
+
+def accMass():
+    for q in range(numMass):
+        fvx, fvy = massVX[q], massVY[q]
+
+        for p in range(numMass):
+            radQ = massRad[q]
+            if p != q:
+                disX = massPX[p] - massPX[q]
+                disY = massPY[p] - massPY[q]
+                dis = math.sqrt(disX * disX + disY * disY)
+                if dis == 0:
+                    dis = 0.000001
+
+                if dis > radQ + massRad[p]:
+                    force = massMag[p] / (dis * dis * dis)
+                    fvx += force * disX
+                    fvy += force * disY
+
+        massVX[q], massVY[q] = fvx, fvy
+
+    for q in range(numMass):
+        fpx, fpy = massPX[q], massPY[q]
+
+        fpx += massVX[q]
+        fpy += massVY[q]
+
+        if wallBounce:
+            if fpx < 0:
+                fpx *= -1
+                massVX[q] *= -1
+            elif fpx > MAX_X:
+                fpx = 2 * MAX_X - fpx
+                massVX[q] *= -1
+            if fpy < 0:
+                fpy *= -1
+                massVY[q] *= -1
+            elif fpy > MAX_Y:
+                fpy = 2 * MAX_Y - fpy
+                massVY[q] *= -1
+        elif wallWrap:
+            if circleWall:
+                disX = fpx - MAX_X / 2
+                disY = fpy - MAX_Y / 2
+                dis = math.sqrt(disX * disX + disY * disY)
+                if dis > wallRadius:
+                    fpx += -disX / dis * wallRadius * 2
+                    fpy += -disY / dis * wallRadius * 2
+            else:
+                if fpx < 0:
+                    fpx = MAX_X
+                elif fpx > MAX_X:
+                    fpx = 0
+                if fpy < 0:
+                    fpy = MAX_Y
+                elif fpy > MAX_Y:
+                    fpy = 0
+
+        massPX[q], massPY[q] = fpx, fpy
 
 
 def endTest(tx, ty, clr):
-    global testPosX, testPosY, testVelX, testVelY
+    global partPX, partPY, partVX, partVY
     global testTime, maxTime, minTime
     global numTesting, numDone, detail
 
     mapColor[tx][ty] = clr
     endTime = math.log(testTime + 1)
     mapTime[tx][ty] = endTime
-    testDone[tx][ty] = True
+    partDone[tx][ty] = True
 
     if endTime > maxTime:
         maxTime = endTime
