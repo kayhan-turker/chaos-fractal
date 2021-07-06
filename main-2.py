@@ -1,14 +1,16 @@
 import math
 import colorsys
 import arcade
+import numpy
+from PIL import Image
 
-MAX_X = 256
-MAX_Y = 256
+MAX_X = 222
+MAX_Y = 222
 
 defMass = 16
 defRad = 4
 numMass = 6
-ringRad = 64
+ringRad = 55
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
 testPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -130,55 +132,19 @@ def accTest():
                 fpx, fpy, fvx, fvy = spx, spy, svx, svy
 
                 for p in range(numMass):
-                    disX = massPX[p][x][y] - spx
-                    disY = massPY[p][x][y] - spy
-                    dis = math.sqrt(disX * disX + disY * disY)
-                    if dis == 0:
-                        dis = 0.000001
-
-                    if dis < massRad[p] + testRad:
+                    dvx, dvy = accelerate(spx, spy, massPX[p][x][y], massPY[p][x][y],
+                                          massRad[p] + testRad, massMag[p])
+                    if dvx == 0 and dvy == 0:
                         endTest(x, y, massClr[p])
                         break
                     else:
-                        force = massMag[p] / (dis * dis * dis)
-                        fvx += force * disX
-                        fvy += force * disY
+                        fvx += dvx
+                        fvy += dvy
 
                 fpx += fvx
                 fpy += fvy
 
-                if wallBounce:
-                    if fpx < 0:
-                        fpx *= -1
-                        fvx *= -1
-                    elif fpx > MAX_X:
-                        fpx = 2 * MAX_X - fpx
-                        fvx *= -1
-                    if fpy < 0:
-                        fpy *= -1
-                        fvy *= -1
-                    elif fpy > MAX_Y:
-                        fpy = 2 * MAX_Y - fpy
-                        fvy *= -1
-                elif wallWrap:
-                    if circleWall:
-                        disX = fpx - MAX_X / 2
-                        disY = fpy - MAX_Y / 2
-                        dis = math.sqrt(disX * disX + disY * disY)
-                        if dis > wallRadius:
-                            fpx += -disX / dis * wallRadius * 2
-                            fpy += -disY / dis * wallRadius * 2
-                    else:
-                        if fpx < 0:
-                            fpx = MAX_X
-                        elif fpx > MAX_X:
-                            fpx = 0
-                        if fpy < 0:
-                            fpy = MAX_Y
-                        elif fpy > MAX_Y:
-                            fpy = 0
-
-                testPX[x][y], testPY[x][y], testVX[x][y], testVY[x][y] = fpx, fpy, fvx, fvy
+                testPX[x][y], testPY[x][y], testVX[x][y], testVY[x][y] = collide(fpx, fpy, fvx, fvy)
 
 
 def accMass():
@@ -186,76 +152,78 @@ def accMass():
         for y in range(MAX_Y):
             if testRun[x][y]:
                 for q in range(numMass):
-                    fvx, fvy = massVX[q][x][y], massVY[q][x][y]
+                    fpx, fpy, fvx, fvy = massPX[q][x][y], massPY[q][x][y], massVX[q][x][y], massVY[q][x][y]
 
                     radQ = massRad[q]
-                    # mass to mass acceleration
                     for p in range(numMass):
                         if p != q:
-                            disX = massPX[p][x][y] - massPX[q][x][y]
-                            disY = massPY[p][x][y] - massPY[q][x][y]
-                            dis = math.sqrt(disX * disX + disY * disY)
-                            if dis == 0:
-                                dis = 0.000001
+                            dvx, dvy = accelerate(fpx, fpy, massPX[p][x][y], massPY[p][x][y],
+                                                  radQ + massRad[p], massMag[p])
+                            fvx += dvx
+                            fvy += dvy
 
-                            if dis > radQ + massRad[p]:
-                                force = massMag[p] / (dis * dis * dis)
-                                fvx += force * disX
-                                fvy += force * disY
+                    dvx, dvy = accelerate(fpx, fpy, testPX[x][y], testPY[x][y],
+                                          radQ + testRad, testMag)
+                    fvx += dvx
+                    fvy += dvy
 
-                    # mass to test acceleration
-                    disX = testPX[x][y] - massPX[q][x][y]
-                    disY = testPY[x][y] - massPY[q][x][y]
-                    dis = math.sqrt(disX * disX + disY * disY)
-                    if dis == 0:
-                        dis = 0.000001
-
-                    if dis > radQ + testRad:
-                        force = testMag / (dis * dis * dis)
-                        fvx += force * disX
-                        fvy += force * disY
-
-                    # sum forces
                     massVX[q][x][y], massVY[q][x][y] = fvx, fvy
 
                 for q in range(numMass):
-                    fpx, fpy = massPX[q][x][y], massPY[q][x][y]
+                    fpx, fpy, fvx, fvy = massPX[q][x][y], massPY[q][x][y], massVX[q][x][y], massVY[q][x][y]
 
-                    fpx += massVX[q][x][y]
-                    fpy += massVY[q][x][y]
+                    fpx += fvx
+                    fpy += fvy
 
-                    if wallBounce:
-                        if fpx < 0:
-                            fpx *= -1
-                            massVX[q][x][y] *= -1
-                        elif fpx > MAX_X:
-                            fpx = 2 * MAX_X - fpx
-                            massVX[q][x][y] *= -1
-                        if fpy < 0:
-                            fpy *= -1
-                            massVY[q][x][y] *= -1
-                        elif fpy > MAX_Y:
-                            fpy = 2 * MAX_Y - fpy
-                            massVY[q][x][y] *= -1
-                    elif wallWrap:
-                        if circleWall:
-                            disX = fpx - MAX_X / 2
-                            disY = fpy - MAX_Y / 2
-                            dis = math.sqrt(disX * disX + disY * disY)
-                            if dis > wallRadius:
-                                fpx += -disX / dis * wallRadius * 2
-                                fpy += -disY / dis * wallRadius * 2
-                        else:
-                            if fpx < 0:
-                                fpx = MAX_X
-                            elif fpx > MAX_X:
-                                fpx = 0
-                            if fpy < 0:
-                                fpy = MAX_Y
-                            elif fpy > MAX_Y:
-                                fpy = 0
+                    massPX[q][x][y], massPY[q][x][y], massVX[q][x][y], massVY[q][x][y] = collide(fpx, fpy, fvx, fvy)
 
-                    massPX[q][x][y], massPY[q][x][y] = fpx, fpy
+
+def accelerate(px, py, qx, qy, rad, mass):
+    disX = qx - px
+    disY = qy - py
+    dis = math.sqrt(disX * disX + disY * disY)
+    if dis == 0:
+        dis = 0.000001
+
+    if dis > rad:
+        force = mass / (dis * dis * dis)
+        return force * disX, force * disY
+    return 0, 0
+
+
+def collide(px, py, vx, vy):
+    if wallBounce:
+        if px < 0:
+            px *= -1
+            vx *= -1
+        elif px > MAX_X:
+            px = 2 * MAX_X - px
+            vx *= -1
+        if py < 0:
+            py *= -1
+            vy *= -1
+        elif py > MAX_Y:
+            py = 2 * MAX_Y - py
+            vy *= -1
+    elif wallWrap:
+        if circleWall:
+            disX = px - MAX_X / 2
+            disY = py - MAX_Y / 2
+            dis = math.sqrt(disX * disX + disY * disY)
+            if dis > wallRadius:
+                px += -disX / dis * wallRadius * 2
+                py += -disY / dis * wallRadius * 2
+        else:
+            if px < 0:
+                px = MAX_X
+            elif px > MAX_X:
+                px = 0
+            if py < 0:
+                py = MAX_Y
+            elif py > MAX_Y:
+                py = 0
+
+    return px, py, vx, vy
 
 
 def endTest(x, y, clr):
