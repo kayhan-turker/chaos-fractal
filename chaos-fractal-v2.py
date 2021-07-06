@@ -68,9 +68,17 @@ class Canvas(arcade.Window):
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.SPACE:
-            getMap()
-            mapImage.show()
-            mapImage.save('chaos-fractal-%i-%0.2f.png' % (numMass, testDone / (testDone + testLeft)))
+            getImage()
+
+
+def mainLoop():
+    global testTime, testLeft
+
+    accTest()
+    accMass()
+
+    if testLeft > 0:
+        testTime += 1
 
 
 def checkDone():
@@ -82,6 +90,13 @@ def checkDone():
                 dis = math.sqrt(disX * disX + disY * disY)
                 if dis > wallRadius:
                     endTest(x, y, (0, 0, 0))
+
+
+def getImage(display=True):
+    getMap()
+    mapImage.save('chaos-fractal-%i-%0.2f.png' % (numMass, testDone / (testDone + testLeft)))
+    if display:
+        mapImage.show()
 
 
 def drawWorld(arc):
@@ -109,16 +124,6 @@ def getMap():
             mapArray[mapY, mapX] = [clr[0], clr[1], clr[2]]
 
     mapImage = Image.fromarray(mapArray, 'RGB')
-
-
-def mainLoop():
-    global testTime
-
-    accTest()
-    accMass()
-
-    if testLeft > 0:
-        testTime += 1
 
 
 def accTest():
@@ -245,6 +250,9 @@ def endTest(x, y, clr):
 
     if testLeft % 100 == 0:
         print(testLeft, testDone, round(testDone / (testDone + testLeft) * 100) / 100)
+
+    if testLeft % 1000 == 0 and clr != (0, 0, 0):
+        getImage(False)
 
 
 def main():
