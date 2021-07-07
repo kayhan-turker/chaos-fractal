@@ -8,9 +8,10 @@ preview = True
 MAX_X = round(512 / (2 if preview else 1))
 MAX_Y = round(512 / (2 if preview else 1))
 
+testMag = 16
+testRad = 4
 defMass = 16
 defRad = 4
-negTest = False
 numMass = 3
 ringRad = 32
 alternateMass = False
@@ -25,8 +26,6 @@ testPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
 testVX = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
 testVY = [[0 for y in range(MAX_Y)] for x in range(MAX_X)]
 testRun = [[True for y in range(MAX_Y)] for x in range(MAX_X)]
-testMag = defMass * (-1 if negTest else 1)
-testRad = defRad
 
 massPX = [[[MAX_X / 2 + ringRad * math.cos(i / numMass * 2 * math.pi)
             for y in range(MAX_Y)] for x in range(MAX_X)] for i in range(numMass + 1)]
@@ -53,6 +52,10 @@ testMax = MAX_X * MAX_Y
 testLeft = testMax
 testDone = 0
 
+frameTimer = 0
+frameInterval = 10
+typeName = ""
+
 
 class Canvas(arcade.Window):
     def __init__(self):
@@ -63,6 +66,8 @@ class Canvas(arcade.Window):
         if preview:
             halfDimensions()
         checkDone()
+        if not preview:
+            getTypeName()
 
     def on_draw(self):
         arcade.start_render()
@@ -77,13 +82,18 @@ class Canvas(arcade.Window):
 
 
 def mainLoop():
-    global testTime, testLeft
+    global testTime, testLeft, frameTimer, frameInterval
 
     accTest()
     accMass()
 
     if testLeft > 0:
         testTime += 1
+
+    if not preview:
+        if frameTimer % frameInterval == 0:
+            getImage(False)
+        frameTimer += 1
 
 
 def halfDimensions():
@@ -120,7 +130,11 @@ def drawWorld(arc):
 def getImage(display=True):
     getMap()
     if not preview:
-        mapImage.save('chaos-fractal-%i-%0.2f.png' % (numMass, testDone / (testDone + testLeft)))
+        doneRatio = testDone / (testLeft + testDone)
+        fileName = 'chaos-fractal-%s-%0.2f-%i.png' % (typeName, doneRatio, frameTimer / frameInterval) \
+            if frameTimer % frameInterval == 0 else \
+            'chaos-fractal-%s-%0.2f-%0.2f.png' % (typeName, doneRatio, frameTimer / frameInterval)
+        mapImage.save(fileName)
     if display:
         mapImage.show()
 
@@ -139,6 +153,20 @@ def getMap():
             mapArray[MAX_Y - mapY - 1, mapX] = [clr[0], clr[1], clr[2]]
 
     mapImage = Image.fromarray(mapArray, 'RGB')
+
+
+def getTypeName():
+    global typeName
+    typeName += 'C' if circleWall else 'S'
+    typeName += 'R' if wallWrap else 'B' if wallBounce else ''
+    numPos = 0
+    for p in range(numMass):
+        if massMag[p] >= 0:
+            numPos += 1
+    typeName += str(numPos)
+    typeName += str((numMass - numPos))
+    if testMag < 0:
+        typeName += 'R'
 
 
 def accTest():
@@ -248,7 +276,7 @@ def collide(px, py, vx, vy):
 def endTest(x, y, clr):
     global testPX, testPY, testVX, testVY
     global massPX, massPY, massVX, massVY
-    global testTime, maxTime, minTime, testDone, testLeft
+    global testTime, maxTime, minTime, testDone, testLeft, frameTimer, frameInterval
 
     mapColor[x][y] = clr
     endTime = math.log(testTime + 1)
@@ -264,10 +292,8 @@ def endTest(x, y, clr):
     testDone += 1
 
     if testLeft % 100 == 0:
-        print(testLeft, testDone, round(testDone / (testDone + testLeft) * 100) / 100)
-
-    if testLeft % 1000 == 0 and clr != (0, 0, 0):
-        getImage(False)
+        print("test left vs done:", testLeft, testDone, round(testDone / (testDone + testLeft) * 100) / 100,
+              "\tframe timer:", frameTimer, frameInterval, frameTimer / frameInterval)
 
 
 def main():
