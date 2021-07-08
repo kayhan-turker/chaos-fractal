@@ -4,7 +4,7 @@ import arcade
 import numpy
 from PIL import Image
 
-preview = True
+preview = False
 MAX_X = round(512 / (2 if preview else 1))
 MAX_Y = round(512 / (2 if preview else 1))
 
@@ -12,13 +12,13 @@ testMag = 16
 testRad = 4
 defMass = 16
 defRad = 4
-numMass = 3
-ringRad = 32
-alternateMass = False
+numMass = 6
+ringRad = 128
+altMag = True
 
 wallBounce = False
-wallWrap = False
-circleWall = False
+wallWrap = True
+circleWall = True
 wallRadius = min(MAX_X, MAX_Y) / 2
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -35,7 +35,7 @@ massVX = [[[0 for i in range(numMass + 1)
             for y in range(MAX_Y)] for x in range(MAX_X)] for i in range(numMass + 1)]
 massVY = [[[0 for i in range(numMass + 1)
             for y in range(MAX_Y)] for x in range(MAX_X)] for i in range(numMass + 1)]
-massMag = [defMass * math.cos((1 if alternateMass else 2) * math.pi * i) for i in range(numMass + 1)]
+massMag = [defMass * math.cos((1 if altMag else 2) * math.pi * i) for i in range(numMass + 1)]
 massRad = [defRad for i in range(numMass + 1)]
 massClr = [colorsys.hsv_to_rgb(i / numMass, 1.0, 255) for i in range(numMass + 1)]
 
@@ -59,7 +59,7 @@ typeName = ""
 
 class Canvas(arcade.Window):
     def __init__(self):
-        super().__init__(MAX_X, MAX_Y, "Chart")
+        super().__init__(MAX_X, MAX_Y, "Main v3")
         arcade.set_background_color((0, 0, 0))
 
     def setup(self):
@@ -93,7 +93,10 @@ def mainLoop():
     if not preview:
         if frameTimer % frameInterval == 0:
             getImage(False)
-        frameTimer += 1
+        if testLeft > 0:
+            frameTimer += 1
+        elif frameTimer % frameInterval == 0:
+            frameTimer += 1
 
 
 def halfDimensions():

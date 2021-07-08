@@ -2,7 +2,6 @@
 /*/
 
 !.gitignore
-!chaos-fractal-v1.py
-!chaos-fractal-v2.py
 !chaos-fractal-v3.py
+!chaos-fractal-placement-v1.py
 
