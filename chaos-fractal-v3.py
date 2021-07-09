@@ -12,13 +12,13 @@ testMag = 16
 testRad = 4
 defMass = 16
 defRad = 4
-numMass = 6
-ringRad = 128
-altMag = True
+numMass = 2
+ringRad = 32
+altMag = False
 
-wallBounce = False
-wallWrap = True
-circleWall = True
+wallBounce = True
+wallWrap = False
+circleWall = False
 wallRadius = min(MAX_X, MAX_Y) / 2
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -47,6 +47,16 @@ mapTime = [[0.0 for y in range(MAX_Y)] for x in range(MAX_X)]
 
 mapArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
 mapImage = Image.fromarray(mapArray, 'RGB')
+
+getLpn = True
+numLpn = 0
+mapLpnX = [[0.0 for y in range(MAX_Y)] for x in range(MAX_X)]
+mapLpnY = [[0.0 for y in range(MAX_Y)] for x in range(MAX_X)]
+mapLpnD = [[0.0 for y in range(MAX_Y)] for x in range(MAX_X)]
+maxLpn, minLpn = 0.001, -0.001
+
+lpnArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
+lpnImage = Image.fromarray(lpnArray, 'RGB')
 
 testMax = MAX_X * MAX_Y
 testLeft = testMax
@@ -98,6 +108,9 @@ def mainLoop():
         elif frameTimer % frameInterval == 0:
             frameTimer += 1
 
+    if getLpn:
+        updateLpn()
+
 
 def halfDimensions():
     global ringRad, wallRadius, testMag, testRad, massMag, massRad
@@ -131,18 +144,28 @@ def drawWorld(arc):
 
 
 def getImage(display=True):
-    getMap()
+    getMapImage()
+    if getLpn:
+        getLpnImage()
+
     if not preview:
         doneRatio = testDone / (testLeft + testDone)
-        fileName = 'chaos-fractal-%s-%0.2f-%i.png' % (typeName, doneRatio, frameTimer / frameInterval) \
+        fileName = 'screenshots/outcome/chaos-fractal-%s-%0.2f-%i.png' % (typeName, doneRatio, frameTimer / frameInterval) \
             if frameTimer % frameInterval == 0 else \
-            'chaos-fractal-%s-%0.2f-%0.2f.png' % (typeName, doneRatio, frameTimer / frameInterval)
+            'screenshots/outcome/chaos-fractal-%s-%0.2f-%0.2f.png' % (typeName, doneRatio, frameTimer / frameInterval)
         mapImage.save(fileName)
+
+        if getLpn:
+            fileName = 'screenshots/lyapunov/lpn-%s-%0.2f-%i.png' % (typeName, doneRatio, frameTimer / frameInterval) \
+                if frameTimer % frameInterval == 0 else \
+                'screenshots/lyapunov/lpn-%s-%0.2f-%0.2f.png' % (typeName, doneRatio, frameTimer / frameInterval)
+            lpnImage.save(fileName)
+
     if display:
         mapImage.show()
 
 
-def getMap():
+def getMapImage():
     global mapArray, mapImage
 
     mapArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
@@ -156,6 +179,33 @@ def getMap():
             mapArray[MAX_Y - mapY - 1, mapX] = [clr[0], clr[1], clr[2]]
 
     mapImage = Image.fromarray(mapArray, 'RGB')
+
+
+def getLpnImage():
+    global lpnArray, lpnImage, mapLpnX, mapLpnY, mapLpnD, maxLpn, minLpn
+
+    lpnArray = numpy.empty((MAX_Y, MAX_X, 3), dtype=numpy.uint8)
+
+    maxLpn, minLpn = 0.001, -0.001
+    for mapX in range(MAX_X):
+        for mapY in range(MAX_Y):
+            currentMax = max(mapLpnX[mapX][mapY], mapLpnY[mapX][mapY], mapLpnD[mapX][mapY])
+            currentMin = min(mapLpnX[mapX][mapY], mapLpnY[mapX][mapY], mapLpnD[mapX][mapY])
+            if currentMax > maxLpn and currentMax > 0:
+                maxLpn = currentMax
+            if currentMin < minLpn and currentMin < 0:
+                minLpn = currentMin
+
+    for mapX in range(MAX_X):
+        for mapY in range(MAX_Y):
+            factorR = mapLpnX[mapX][mapY] / max(maxLpn, abs(minLpn)) / 2 + 0.5
+            factorG = mapLpnY[mapX][mapY] / max(maxLpn, abs(minLpn)) / 2 + 0.5
+            factorB = mapLpnD[mapX][mapY] / max(maxLpn, abs(minLpn)) / 2 + 0.5
+            clr = (factorR * 255, factorG * 255, factorB * 255)
+
+            lpnArray[MAX_Y - mapY - 1, mapX] = [clr[0], clr[1], clr[2]]
+
+    lpnImage = Image.fromarray(lpnArray, 'RGB')
 
 
 def getTypeName():
@@ -296,7 +346,63 @@ def endTest(x, y, clr):
 
     if testLeft % 100 == 0:
         print("test left vs done:", testLeft, testDone, round(testDone / (testDone + testLeft) * 100) / 100,
-              "\tframe timer:", frameTimer, frameInterval, frameTimer / frameInterval)
+              "\t\tframe timer:", frameTimer, frameInterval, frameTimer / frameInterval,
+              "\t\tlyapunov:", minLpn, maxLpn)
+
+
+def updateLpn():
+    global testRun, mapLpnX, mapLpnY, mapLpnD
+
+    for x in range(MAX_X):
+        for y in range(MAX_Y):
+            if testRun[x][y]:
+                lpn = checkLpnAxis(x, y, 1, 0)
+                if lpn is not None:
+                    mapLpnX[x][y] = lpn
+
+                lpn = checkLpnAxis(x, y, 0, 1)
+                if lpn is not None:
+                    mapLpnY[x][y] = lpn
+
+                lpn = checkLpnAxis(x, y, 1, 1)
+                if lpn is not None:
+                    lpn2 = checkLpnAxis(x, y, 1, -1)
+                    if lpn2 is not None:
+                        lpn = (lpn + lpn2) / 2
+                        mapLpnD[x][y] = lpn
+
+
+def checkLpnAxis(x, y, xDiff, yDiff):
+    global testRun, maxLpn, minLpn
+
+    avgLpn, count = 0, 0
+    for i in range(2):
+        if (xDiff == 0 or (xDiff > 0 and x < MAX_X - 1) or (xDiff < 0 < x)) and \
+                (yDiff == 0 or (yDiff > 0 and y < MAX_Y - 1) or (yDiff < 0 < y)) and testRun[x + xDiff][y + yDiff]:
+            avgLpn += calcLpn(x, y, x + xDiff, y + yDiff)
+            count += 1
+        xDiff *= -1
+        yDiff *= -1
+
+    if count == 0:
+        return
+
+    avgLpn = avgLpn / count
+    return avgLpn
+
+
+def calcLpn(x0, y0, x1, y1):
+    global testPX, testPY
+
+    disX = testPX[x1][y1] - testPX[x0][y0]
+    disY = testPY[x1][y1] - testPY[x0][y0]
+    disT = math.sqrt(disX * disX + disY * disY)
+
+    disX = x1 - x0
+    disY = y1 - y0
+    dis0 = math.sqrt(disX * disX + disY * disY)
+
+    return math.log(disT / dis0) / testTime
 
 
 def main():
