@@ -5,21 +5,23 @@ import numpy
 from PIL import Image
 
 preview = False
+autoSnapshot = False
 MAX_X = round(512 / (2 if preview else 1))
 MAX_Y = round(512 / (2 if preview else 1))
 
 testMag = 16
-testRad = 4
+testRad = 5
 defMass = 16
-defRad = 4
-numMass = 2
-ringRad = 32
+defRad = 5
+numMass = 3
+ringRad = 128
 altMag = False
 
-wallBounce = True
-wallWrap = False
-circleWall = False
+wallBounce = False
+wallWrap = True
+circleWall = True
 wallRadius = min(MAX_X, MAX_Y) / 2
+lockMass = False
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
 testPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -95,12 +97,13 @@ def mainLoop():
     global testTime, testLeft, frameTimer, frameInterval
 
     accTest()
-    accMass()
+    if not lockMass:
+        accMass()
 
     if testLeft > 0:
         testTime += 1
 
-    if not preview:
+    if (not preview) and autoSnapshot:
         if frameTimer % frameInterval == 0:
             getImage(False)
         if testLeft > 0:
@@ -220,6 +223,8 @@ def getTypeName():
     typeName += str((numMass - numPos))
     if testMag < 0:
         typeName += 'R'
+    elif testMag == 0:
+        typeName += 'M'
 
 
 def accTest():
