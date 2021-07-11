@@ -10,9 +10,9 @@ MAX_X = round(512 / (2 if preview else 1))
 MAX_Y = round(512 / (2 if preview else 1))
 
 testMag = 16
-testRad = 5
+testRad = 0.25
 defMass = 16
-defRad = 5
+defRad = 0.25
 numMass = 3
 ringRad = 128
 altMag = False
@@ -22,6 +22,7 @@ wallWrap = True
 circleWall = True
 wallRadius = min(MAX_X, MAX_Y) / 2
 lockMass = False
+stepFactor = 0.005
 
 testPX = [[x for y in range(MAX_Y)] for x in range(MAX_X)]
 testPY = [[y for y in range(MAX_Y)] for x in range(MAX_X)]
@@ -246,8 +247,8 @@ def accTest():
                         fvx += dvx
                         fvy += dvy
 
-                fpx += fvx
-                fpy += fvy
+                fpx += fvx * stepFactor
+                fpy += fvy * stepFactor
 
                 testPX[x][y], testPY[x][y], testVX[x][y], testVY[x][y] = collide(fpx, fpy, fvx, fvy)
 
@@ -277,8 +278,8 @@ def accMass():
                 for q in range(numMass):
                     fpx, fpy, fvx, fvy = massPX[q][x][y], massPY[q][x][y], massVX[q][x][y], massVY[q][x][y]
 
-                    fpx += fvx
-                    fpy += fvy
+                    fpx += fvx * stepFactor
+                    fpy += fvy * stepFactor
 
                     massPX[q][x][y], massPY[q][x][y], massVX[q][x][y], massVY[q][x][y] = collide(fpx, fpy, fvx, fvy)
 
